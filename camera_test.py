@@ -48,6 +48,8 @@ while True:
     if frame is None:
         break
 
+    frame = cv2.flip(frame, 1)
+
     frame_count += 1
     if frame_count % process_every_n_frames == 0:
         faces = app.get(frame)

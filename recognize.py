@@ -157,6 +157,7 @@ while True:
 
         break
 
+    frame = cv2.flip(frame, 1)
 
     frame_count += 1
 

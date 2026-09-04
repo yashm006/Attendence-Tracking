@@ -93,6 +93,8 @@ while True:
         cv2.destroyAllWindows()
         exit()
 
+    frame = cv2.flip(frame, 1)
+
     elapsed = time.time() - countdown_start
     remaining = PREPARATION_TIME - elapsed
 
