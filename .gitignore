@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+.env.*
+
+# InsightFace / model files
+models/
+*.onnx
+
+# Face / student data
+data/
+students/
+faces.pkl
+*.pkl
+
+# Generated files
+*.log
+*.tmp
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
