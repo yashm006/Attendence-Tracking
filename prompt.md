@@ -1,734 +1,1494 @@
-# AI Prompt for Web Application Generation
+# FINAL MASTER PROMPT — AI AUTOMATED FACE ATTENDANCE SYSTEM
 
-**Role:** Senior UI/UX Engineer and Next.js/React/Tailwind Developer.
+## Role
 
-**Task:** Build a polished, production-quality frontend for an **AI Automated Face Attendance System**.
+You are a Senior UI/UX Engineer and expert Next.js / React / TypeScript / Tailwind CSS developer.
 
-The application will eventually connect to a **Python FastAPI backend using InsightFace/ArcFace for face detection and recognition**. For this task, build the frontend only and provide clean, clearly isolated integration hooks for the backend.
+Build a polished, production-quality **frontend-only web application** for a college **AI Automated Face Attendance System**.
 
-Do **not** implement actual face-recognition or ML logic in the frontend.
+The frontend will eventually communicate with a Python FastAPI backend running:
+
+* InsightFace / ArcFace
+* GPU-accelerated face detection and recognition
+* PostgreSQL
+* pgvector for face embedding similarity search
+
+This task is **FRONTEND ONLY**.
+
+Use realistic mock data and explicit API/WebSocket integration hooks.
 
 ---
 
-# 1. Technology Stack
+# 1. CRITICAL ARCHITECTURE RULES
+
+The frontend must NEVER perform face recognition or face embedding operations.
+
+The browser may only:
+
+1. Access the camera.
+2. Display the camera feed.
+3. Capture frames/images.
+4. Send frames to the FastAPI backend.
+5. Receive recognition results.
+6. Display backend-provided bounding boxes and recognition information.
+
+DO NOT use:
+
+* face-api.js
+* TensorFlow.js
+* MediaPipe face recognition
+* InsightFace in the browser
+* ONNX face-recognition models
+* Any other client-side face-recognition or ML model.
+
+The frontend must never connect directly to PostgreSQL.
+
+Database credentials and backend secrets must never be exposed to client-side code.
+
+---
+
+# 2. TWO LOGICAL PORTALS
+
+The system consists of two logically separate portals.
+
+## Attendance Portal
+
+Used by:
+
+* Professor
+* Admin
+
+Purpose:
+
+* Start attendance sessions
+* Capture attendance
+* Monitor recognition
+* Review attendance
+* Manually correct results
+* View audit trail
+* Confirm attendance
+* Export attendance
+* View attendance history
+
+## Enrollment Portal
+
+Used ONLY by:
+
+* Admin
+
+Purpose:
+
+* Register students
+* Capture five face samples
+* Submit enrollment data to the backend
+* Manage enrollment workflow
+
+A Professor MUST NOT be able to access enrollment functionality.
+
+Even if both portals are initially deployed from the same Next.js application, treat them as separate logical areas with strict role-based access.
+
+---
+
+# 3. ROLE-BASED ACCESS CONTROL
+
+Use mock authentication initially.
+
+Define these roles:
+
+```text
+admin
+professor
+```
+
+Example mock users:
+
+```text
+Admin
+email: admin@college.edu
+role: admin
+
+Professor
+email: professor@college.edu
+role: professor
+```
+
+Do not implement real password authentication yet.
+
+Create a clean authentication abstraction so real JWT/session authentication can later be connected to FastAPI.
+
+---
+
+## Permission Matrix
+
+Implement exactly this permission model:
+
+| Feature                    | Admin | Professor |
+| -------------------------- | ----: | --------: |
+| Login                      |   Yes |       Yes |
+| Attendance Dashboard       |   Yes |       Yes |
+| Capture Attendance         |   Yes |       Yes |
+| Review Attendance          |   Yes |       Yes |
+| Manual Attendance Override |   Yes |       Yes |
+| View Audit Trail           |   Yes |       Yes |
+| Attendance History         |   Yes |       Yes |
+| Export Attendance          |   Yes |       Yes |
+| Student Enrollment         |   Yes |        No |
+
+Do NOT add Student Management or Professor Management features unless explicitly requested later.
+
+Frontend route guards are required, but remember:
+
+**Frontend authorization is not real security.**
+
+The eventual FastAPI backend must independently enforce authorization.
+
+---
+
+# 4. ROUTES
+
+Implement these routes:
+
+```text
+/login
+/
+ /attendance/history
+ /attendance/history/[sessionId]
+ /enroll
+ /unauthorized
+```
+
+The main `/` route is the Attendance Dashboard.
+
+---
+
+## Route Rules
+
+### `/login`
+
+Accessible without authentication.
+
+### `/`
+
+Accessible by:
+
+* Admin
+* Professor
+
+### `/attendance/history`
+
+Accessible by:
+
+* Admin
+* Professor
+
+### `/attendance/history/[sessionId]`
+
+Accessible by:
+
+* Admin
+* Professor
+
+### `/enroll`
+
+Accessible by:
+
+* Admin only
+
+### `/unauthorized`
+
+Accessible by authenticated users who attempt to access something they are not authorized to use.
+
+---
+
+# 5. PROFESSOR ACCESS TO ENROLLMENT
+
+If a Professor attempts to access:
+
+```text
+/enroll
+```
+
+display a professional 403-style page:
+
+```text
+403
+
+Access Denied
+
+You do not have permission to access the Student Enrollment Portal.
+
+[ Return to Dashboard ]
+```
+
+Also:
+
+* Hide Enrollment from Professor navigation.
+* Do not render enrollment controls for Professor accounts.
+* Do not rely solely on hiding the navigation item.
+* Protect the route using the mock authentication context.
+
+---
+
+# 6. PROJECT STRUCTURE
 
 Use:
 
-* **Next.js** with App Router
-* **TypeScript**
-* **React**
-* **Tailwind CSS**
-* **Lucide React** for icons
-* **Framer Motion** for subtle animations
-
-Use modern Next.js conventions and functional React components.
-
-Organize the project into reusable components rather than putting everything into `page.tsx`.
-
-Suggested structure:
-
 ```text
 app/
+├── layout.tsx
+├── globals.css
+│
 ├── page.tsx
+│
+├── login/
+│   └── page.tsx
+│
+├── attendance/
+│   └── history/
+│       ├── page.tsx
+│       └── [sessionId]/
+│           └── page.tsx
+│
 ├── enroll/
 │   └── page.tsx
-├── layout.tsx
-└── globals.css
-
+│
+├── unauthorized/
+│   └── page.tsx
+│
 components/
-├── WebcamStream.tsx
-├── AttendanceTable.tsx
-├── StatsCards.tsx
 ├── Navigation.tsx
+│
+├── CaptureMode.tsx
+├── ReviewMode.tsx
+├── WebcamStream.tsx
+├── RecognitionBanner.tsx
+│
+├── AttendanceTable.tsx
+├── AttendanceReviewTable.tsx
+├── StatsCards.tsx
+├── ManualOverrideDialog.tsx
+├── AuditTrail.tsx
+│
 ├── EnrollmentForm.tsx
 ├── CaptureProgress.tsx
+│
 ├── StatusBanner.tsx
+├── AccessDeniedCard.tsx
+│
 └── ui/
-
+    ├── Button.tsx
+    ├── Card.tsx
+    ├── Input.tsx
+    ├── Badge.tsx
+    ├── Dialog.tsx
+    ├── Select.tsx
+    └── Tooltip.tsx
+│
 lib/
+├── types.ts
 ├── api.ts
-└── types.ts
+├── useWebSocket.ts
+├── authContext.tsx
+└── mockData.ts
 ```
 
-Keep backend/API-related code separate from UI components.
+Keep the code modular and reusable.
 
 ---
 
-# 2. Design System
+# 7. LOGIN PAGE
 
-Create a modern dark-mode interface.
+Create a professional college-system login page.
 
-### Background
+Include:
 
-* Main background: `#090d16`
-* Cards/panels: `#111827`
-* Borders: `#1f2937`
+* College/system logo placeholder
+* Application name
+* Email input
+* Password input
+* Login button
+* Loading state
+* Invalid credentials state
 
-### Accent colors
+Use mock authentication.
 
-* Emerald/Teal: `#10b981` / `#06b6d4`
-* Indigo: `#6366f1`
-* Error/Unknown: `#f43f5e`
-* Neutral text: slate/zinc tones
+After login:
 
-### Visual style
+Admin → `/`
 
-* Modern SaaS / AI dashboard
-* Rounded cards (`rounded-2xl`)
-* Subtle borders
-* Slight glass/blur effects where appropriate
-* Clean typography
-* Good spacing
-* Clear hierarchy
-* Subtle Framer Motion animations
+Professor → `/`
 
-Avoid excessive glowing effects, excessive animations, or visually distracting elements.
-
-The interface should look like a **real college attendance product**, not a sci-fi demo.
-
-It must remain highly usable on a laptop and tablet.
+The dashboard and navigation should automatically adapt to the authenticated role.
 
 ---
 
-# 3. Application Pages
+# 8. NAVIGATION
 
-The application has two primary pages.
-
-```text
-/enroll       → Student Enrollment Portal
-/             → Live Attendance Dashboard
-```
-
-Provide navigation between the two.
-
----
-
-# 4. Shared Navigation
-
-Create a reusable navigation/header component.
+Create a professional navigation component.
 
 Display:
 
-**Smart AI Attendance**
+* Application name
+* Current user
+* User role
+* Backend connection status
+* Navigation
+* Logout
 
-Navigation items:
+For Admin:
 
-* Live Dashboard
-* Enrollment
+```text
+Dashboard
+Attendance History
+Enrollment
+```
 
-Also display a system status indicator:
+For Professor:
 
-🟢 `System Ready`
+```text
+Dashboard
+Attendance History
+```
 
-The navigation should remain consistent across both pages.
+Enrollment MUST NOT appear for Professors.
+
+The navigation should be optimized for desktop/tablet administrative screens.
+
+However:
+
+**Navigation must NOT appear during Capture Mode.**
+
+Capture Mode is a dedicated kiosk-style experience.
 
 ---
 
-# 5. Student Enrollment Portal — `/enroll`
+# 9. ATTENDANCE WORKFLOW
 
-## Layout
-
-Use a responsive two-column layout on desktop.
+The attendance workflow is:
 
 ```text
-┌──────────────────────┬─────────────────────────────┐
-│ Enrollment Form      │                             │
-│                      │      Webcam Preview         │
-│ Capture Progress     │                             │
-│                      │                             │
-│ Status               │                             │
-└──────────────────────┴─────────────────────────────┘
+Professor/Admin Login
+        ↓
+Attendance Dashboard
+        ↓
+Select Course / Class
+        ↓
+Start Attendance Session
+        ↓
+Enter Capture Mode
+        ↓
+Camera starts
+        ↓
+Students walk past camera
+        ↓
+Frames sent to FastAPI backend
+        ↓
+Backend performs face detection + recognition
+        ↓
+Frontend receives recognition result
+        ↓
+Attendance result displayed
+        ↓
+Capture session ends
+        ↓
+Enter Review Mode
+        ↓
+Professor reviews results
+        ↓
+Professor can manually override results
+        ↓
+Needs-review cases resolved
+        ↓
+Audit trail recorded
+        ↓
+Professor confirms attendance
+        ↓
+Session finalized
+        ↓
+Attendance can be exported
 ```
-
-On smaller screens, stack the columns vertically.
 
 ---
 
-## A. Student Information Card
+# 10. TWO DISTINCT ATTENDANCE VIEWS
 
-Fields:
+Do NOT create one dashboard where the camera, attendance table, statistics, and review controls are all visible simultaneously.
 
-### Student Full Name
+There must be two distinct states:
 
-Text input.
+## CAPTURE MODE
 
-### Student Roll / ID
+Optimized for the phone camera at the classroom door.
 
-Text input.
+## REVIEW MODE
 
-### Department / Course
+Optimized for the professor reviewing attendance after capture.
 
-Dropdown.
-
-Example options:
-
-```text
-Computer Science & Engineering
-Electronics & Communication
-Electrical Engineering
-Mechanical Engineering
-Civil Engineering
-```
-
-### Start Enrollment
-
-Large primary button:
-
-**Start Enrollment**
-
-Use a camera/scan icon.
-
-The button should remain disabled until required fields are valid.
+These should feel like two different interfaces.
 
 ---
 
-# 6. Enrollment State Machine
+# 11. CAPTURE MODE — KIOSK INTERFACE
 
-Implement the enrollment UI using explicit states.
+Capture Mode is extremely important.
 
-```text
-IDLE
- ↓
-ENROLLING
- ↓
-CAPTURING
- ↓
-COMPLETED
-```
+The eventual deployment may use a professor's smartphone placed on a stand near the classroom door while students walk past it.
 
-The capture process should simulate five samples.
+Therefore Capture Mode must be **mobile-first and kiosk-like**.
 
-Example:
+Do NOT show:
 
-```text
-Samples Captured: 0 / 5
+* Sidebar
+* Large navigation menu
+* Attendance table
+* Large statistics dashboard
+* Unnecessary administrative controls
 
-1   2   3   4   5
-○   ○   ○   ○   ○
-```
-
-As samples are captured:
-
-```text
-Samples Captured: 3 / 5
-
-●   ●   ●   ○   ○
-```
-
-Use a mock timer to simulate capture for demonstration purposes.
-
-Important:
-
-The mock capture logic must be isolated and clearly marked so that it can later be replaced by a FastAPI/WebSocket implementation.
+Instead, use almost the entire screen for the camera.
 
 ---
 
-# 7. Enrollment Positioning Tips
+## Capture Mode Layout
 
-Display a small guidance card:
-
-### Positioning Tips
-
-* Look directly at the camera
-* Keep your face centered
-* Maintain good lighting
-* Remove anything covering your face
-* Stay relatively still during capture
-
----
-
-# 8. Enrollment Status Banner
-
-Create a dynamic status component.
-
-### Idle
-
-> Ready to enroll next student.
-
-### Capturing
-
-> Capturing face sample 3 of 5... Stay still.
-
-### Success
-
-> Successfully enrolled Yash Mathur!
-
-### Error
-
-> Enrollment failed. Please try again.
-
-Use appropriate visual states and icons.
-
----
-
-# 9. Webcam Component
-
-Create a reusable:
-
-```text
-/components/WebcamStream.tsx
-```
-
-The component should use the browser's camera API:
-
-```tsx
-navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: false
-});
-```
-
-Display the live camera stream using:
-
-```tsx
-<video />
-```
-
-The video should be muted and autoplay.
-
-Mirror the camera preview horizontally for a natural selfie-style experience.
-
-After obtaining the camera frame, the frontend should be structured so that frames can later be sampled/sent to the FastAPI backend.
-
----
-
-# 10. Canvas Overlay
-
-Place a transparent HTML5 canvas directly above the video.
-
-Structure:
-
-```text
-relative container
-│
-├── <video>
-│
-└── <canvas>
-```
-
-The canvas must automatically synchronize with the video's displayed dimensions.
-
-The canvas will eventually be used to draw:
-
-* Face bounding boxes
-* Recognition labels
-* Confidence/similarity
-* Facial landmarks if supplied by backend
-
-Do not implement actual ML detection.
-
----
-
-# 11. ML Integration Types
-
-Create reusable TypeScript interfaces.
-
-```tsx
-export interface FaceDetection {
-    bbox: [number, number, number, number];
-    name: string;
-    similarity: number;
-}
-
-export interface AttendanceLog {
-    id: string;
-    studentName: string;
-    rollId: string;
-    timestamp: string;
-    date: string;
-    similarity?: number;
-    status: "PRESENT" | "UNKNOWN";
-}
-```
-
-Use these types throughout the application.
-
----
-
-# 12. Backend Integration Hooks
-
-Create a dedicated file:
-
-```text
-/lib/api.ts
-```
-
-Put placeholder API functions there.
-
-For example:
-
-```tsx
-export async function startEnrollment() {
-    // TODO: connect to FastAPI
-}
-
-export async function captureEnrollmentSample() {
-    // TODO: connect to FastAPI
-}
-
-export async function getAttendanceLogs() {
-    // TODO: connect to FastAPI
-}
-```
-
-Do not scatter API calls throughout UI components.
-
-The UI should be designed so that replacing mock functions with real API calls requires minimal changes.
-
----
-
-# 13. Live Attendance Dashboard — `/`
-
-Page title:
-
-# Smart AI Attendance Terminal
-
----
-
-# 14. Top Statistics
-
-Display three cards.
-
-### Total Present Today
-
-Example:
-
-```text
-42 Students
-```
-
-Include a small trend indicator.
-
-### Active Camera
-
-```text
-Online
-30 FPS
-```
-
-with green status indicator.
-
-### Last Recognized
-
-Example:
-
-```text
-Yash Mathur
-02:45 PM
-```
-
-These values may initially use mock data.
-
-Keep the data source isolated so it can later come from FastAPI.
-
----
-
-# 15. Main Dashboard Layout
-
-Use approximately a 60/40 layout.
-
-```text
-┌──────────────────────────────┬────────────────────────┐
-│                              │                        │
-│   LIVE CLASSROOM STREAM      │  LIVE ATTENDANCE LOGS │
-│                              │                        │
-│                              │                        │
-│                              │                        │
-└──────────────────────────────┴────────────────────────┘
-```
-
-Responsive behavior:
-
-On smaller screens, stack vertically.
-
----
-
-# 16. Live Classroom Stream
-
-Create a large camera card.
-
-Header:
-
-```text
-Live Classroom Stream
-🟢 LIVE
-```
-
-Camera area:
-
-```text
-<video>
-<canvas overlay>
-```
-
-The overlay should support backend-provided detections.
-
-Example:
+Conceptually:
 
 ```text
 ┌───────────────────────────────┐
 │                               │
-│      ┌───────────────┐        │
-│      │ Yash Mathur   │        │
-│      │ 94.2%         │        │
-│      └───────────────┘        │
+│                               │
+│        CAMERA FEED            │
+│                               │
+│      ┌──────────────┐         │
+│      │ FACE BOUNDARY│         │
+│      └──────────────┘         │
+│                               │
+│                               │
+│      ✓ RAHUL SHARMA           │
+│      Attendance Recorded      │
+│                               │
+│          ● CAPTURING          │
 │                               │
 └───────────────────────────────┘
 ```
 
-Recognition colors:
-
-* Green → Recognized
-* Red → Unknown
-* Neutral → Detection without recognition
+Use a large Recognition Banner.
 
 ---
 
-# 17. Camera Controls
+# 12. CAPTURE MODE FEATURES
 
-Below the video provide:
+Capture Mode must support:
 
-* Pause / Resume Stream
-* Mirror Mode
-* Fullscreen
+### Full-screen interface
 
-Buttons should have icons and tooltips.
+Use the browser Fullscreen API where appropriate.
 
-Do not actually stop the camera when simply pausing the UI preview unless appropriate; distinguish between pausing the video display and stopping the MediaStream.
+### Camera preview
+
+Use the native MediaDevices API.
+
+### Backend connection status
+
+Clearly show whether the recognition backend is connected.
+
+### Recognition banner
+
+Large and easy to see from a distance.
+
+Examples:
+
+```text
+✓ RAHUL SHARMA
+Attendance Recorded
+```
+
+```text
+? UNKNOWN FACE
+No matching student found
+```
+
+```text
+⚠ NEEDS REVIEW
+Possible match: Arjun Mehta
+Confidence: 78%
+```
+
+### Audio feedback
+
+Play a short success/error sound when appropriate.
+
+Provide a setting to enable/disable sound.
+
+Do not use annoying continuous sounds.
+
+### Vibration
+
+Use the browser vibration API where supported.
+
+For example:
+
+* Short vibration → recognized
+* Different vibration → unknown/needs review
+
+Gracefully handle devices that do not support vibration.
+
+### Screen Wake Lock
+
+Use the Screen Wake Lock API where supported.
+
+While Capture Mode is active:
+
+```text
+navigator.wakeLock
+```
+
+should be used to attempt to keep the screen awake.
+
+Handle unsupported browsers gracefully.
+
+### Exit Capture Mode
+
+Provide a clearly accessible but unobtrusive way to stop the session and enter Review Mode.
 
 ---
 
-# 18. Attendance Log Panel
+# 13. CAMERA STATES
 
-Header:
+Support:
 
-**Live Attendance Logs**
+```text
+initializing
+camera_ready
+camera_permission_denied
+camera_unavailable
+backend_connecting
+backend_connected
+backend_disconnected
+capturing
+stopped
+```
 
-Include:
-
-* Real-Time Sync indicator
-* Export CSV button
-* Search input
-* Date filter
-
----
-
-# 19. Attendance Table
-
-Columns:
-
-| Student Name | Roll ID | Time | Date | Confidence | Status |
-| ------------ | ------- | ---- | ---- | ---------- | ------ |
+Display useful messages for each state.
 
 Example:
 
 ```text
-Yash Mathur     23CS101    02:45 PM    07/10/2026    94.2%    PRESENT
-Rahul Kumar     23CS102    02:46 PM    07/10/2026    91.7%    PRESENT
-Unknown         —          02:47 PM    07/10/2026    —        UNKNOWN
+Camera permission required.
+
+Please allow camera access to begin attendance capture.
 ```
 
-New attendance entries should receive a subtle highlight animation.
-
-Do not use excessive animation.
-
 ---
 
-# 20. CSV Export
+# 14. FACE RECOGNITION RESULTS
 
-Implement a frontend placeholder for:
+The backend will eventually return information such as:
 
-**Export CSV**
+```ts
+interface FaceDetection {
+    studentId?: string;
+    name?: string;
+    confidence?: number;
 
-For the mock version, generate a CSV from the currently displayed attendance logs and trigger a browser download.
+    bbox: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
 
-Keep this functionality independent from the backend so it can later be changed to server-side export.
-
----
-
-# 21. Empty State
-
-If there are no attendance logs:
-
-Display a clean empty state:
-
-```text
-No attendance records yet.
-
-Recognized students will appear here automatically.
+    status:
+        | "recognized"
+        | "already_present"
+        | "unknown"
+        | "needs_review"
+        | "processing";
+}
 ```
 
-Use a suitable Lucide icon.
+The frontend should draw bounding boxes using the backend-provided coordinates.
+
+Do NOT calculate the bounding box in the frontend.
+
+Do NOT detect the face in the frontend.
 
 ---
 
-# 22. React State
+# 15. CONFIDENCE THRESHOLDS
 
-Use clean state management.
+The system must have an explicit confidence classification.
+
+Use configurable mock thresholds.
 
 For example:
 
-```tsx
-const [isEnrolling, setIsEnrolling] = useState(false);
-const [sampleCount, setSampleCount] = useState(0);
-const [recentLogs, setRecentLogs] = useState<AttendanceLog[]>([]);
-const [isCameraActive, setIsCameraActive] = useState(false);
-const [isMirrored, setIsMirrored] = useState(true);
-const [isPaused, setIsPaused] = useState(false);
+```text
+confidence >= 0.90
+→ recognized
+
+0.70 <= confidence < 0.90
+→ needs_review
+
+confidence < 0.70
+→ unknown
 ```
 
-Do not introduce Redux or another state-management library unless genuinely necessary.
+These values are only demonstration defaults and must be easy to change later.
+
+Show the threshold information somewhere in the Review interface.
+
+Example:
+
+```text
+Recognition Threshold
+
+Automatic Match: ≥ 90%
+Needs Review: 70–89%
+Unknown: < 70%
+```
+
+Do not imply that these thresholds are scientifically validated.
 
 ---
 
-# 23. Webcam References
+# 16. NEEDS_REVIEW STATUS
+
+`needs_review` is a first-class attendance state.
+
+It must appear in:
+
+* Capture Mode
+* Review Mode
+* Attendance statistics
+* Attendance table
+* History
+* Audit trail
+
+Example:
+
+```text
+⚠ Needs Review
+
+Possible Match:
+Arjun Mehta
+
+Confidence:
+78%
+
+[ Review ]
+```
+
+A professor must resolve every `needs_review` case before final confirmation.
+
+Do not allow the session to be finalized while unresolved `needs_review` records remain, unless the professor explicitly resolves them.
+
+---
+
+# 17. ATTENDANCE STATES
+
+Use these states:
+
+```text
+Present
+Already Present
+Unknown
+Needs Review
+Pending
+Absent
+```
+
+`Unknown` means the system could not match the face to an enrolled student.
+
+`Needs Review` means the system found a possible match but confidence is not high enough for automatic confirmation.
+
+`Absent` applies during review/finalization rather than being a camera recognition result.
+
+---
+
+# 18. DUPLICATE DETECTION
+
+If a student is recognized multiple times during the same session:
+
+Do not repeatedly create attendance records.
+
+Instead display:
+
+```text
+Already Present
+
+Rahul Sharma
+Already marked present at 10:42 AM
+```
+
+The live feed can still show the recognition event, but the attendance state remains unchanged.
+
+---
+
+# 19. REVIEW MODE
+
+After Capture Mode ends, transition into Review Mode.
+
+Review Mode is designed for the professor.
+
+It should contain:
+
+### Summary
+
+```text
+Total Students: 50
+Present: 42
+Absent: 6
+Needs Review: 2
+Unknown: 1
+```
+
+### Attendance table
+
+Columns:
+
+```text
+Student
+Roll Number
+Status
+Confidence
+Recognition Time
+Source
+Actions
+```
+
+`Source` should indicate:
+
+```text
+AI
+Manual Override
+```
+
+---
+
+# 20. MANUAL OVERRIDE
+
+Every attendance record must be editable before final confirmation.
+
+The professor must be able to:
+
+* Change Present → Absent
+* Change Absent → Present
+* Resolve Needs Review → Present
+* Resolve Needs Review → Absent
+* Remove/reject a false AI match
+
+Provide an Edit/Override action.
+
+When a manual override is made, open a dialog.
+
+Example:
+
+```text
+Manual Attendance Override
+
+Student:
+Rahul Sharma
+
+Current Status:
+Present
+
+New Status:
+[ Absent ▼ ]
+
+Reason / Note:
+[____________________________]
+
+[ Cancel ]    [ Save Override ]
+```
+
+Require a reason/note for manual overrides.
+
+---
+
+# 21. AUDIT TRAIL
+
+Every manual modification must create an audit entry.
+
+Store/display:
+
+```ts
+interface AuditEntry {
+    id: string;
+    studentId: string;
+    previousStatus: string;
+    newStatus: string;
+    reason: string;
+    changedBy: string;
+    changedAt: string;
+    source: "ai" | "manual";
+}
+```
+
+Example:
+
+```text
+AUDIT TRAIL
+
+10:42:18
+AI recognition
+Rahul Sharma → Present
+Confidence: 94%
+
+10:43:02
+Professor override
+Rahul Sharma
+Present → Absent
+
+Reason:
+False recognition
+
+Changed by:
+Prof. Sharma
+```
+
+The audit trail must never silently overwrite the original AI decision.
+
+The original automated result must remain visible.
+
+---
+
+# 22. FINAL CONFIRMATION
+
+Provide:
+
+```text
+[ Confirm Attendance ]
+```
+
+Before confirmation, display a summary:
+
+```text
+Present: 42
+Absent: 6
+Needs Review: 0
+Unknown: 1
+Manual Overrides: 3
+```
+
+If unresolved `needs_review` records exist:
+
+```text
+2 students still require review.
+
+Resolve all Needs Review cases before confirming attendance.
+```
+
+After confirmation:
+
+```text
+Attendance session finalized successfully.
+```
+
+A finalized session becomes read-only.
+
+Manual editing must no longer be possible after finalization.
+
+---
+
+# 23. EXPORT FUNCTIONALITY
+
+Add export functionality.
+
+The following must have export controls:
+
+## Current session
+
+Provide:
+
+```text
+Export CSV
+Export Excel
+```
+
+## Attendance history
+
+Provide:
+
+```text
+Export CSV
+Export Excel
+```
+
+The frontend may initially generate mock exports or call future backend endpoints.
+
+Create API placeholders such as:
+
+```text
+GET /attendance/{sessionId}/export?format=csv
+
+GET /attendance/{sessionId}/export?format=xlsx
+```
+
+The implementation should make it easy to replace the mock behavior with FastAPI-generated files.
+
+---
+
+# 24. ATTENDANCE HISTORY
+
+Create:
+
+```text
+/attendance/history
+```
+
+Display previous sessions.
+
+Columns:
+
+```text
+Course
+Date
+Professor
+Total Students
+Present
+Absent
+Needs Review
+Attendance %
+Status
+```
+
+Provide search/filter controls where appropriate.
+
+Each session should be clickable.
+
+---
+
+# 25. ATTENDANCE HISTORY DETAIL
+
+Use a dedicated route:
+
+```text
+/attendance/history/[sessionId]
+```
+
+Do NOT use a dialog as the primary history-detail interface.
+
+The detail page should show:
+
+* Course
+* Professor
+* Date
+* Start time
+* End time
+* Session duration
+* Total students
+* Present
+* Absent
+* Unknown
+* Needs Review
+* Attendance percentage
+* Manual override count
+* Full attendance records
+* Audit trail
+* Export controls
+
+If the session is finalized, clearly display:
+
+```text
+FINALIZED
+Read Only
+```
+
+---
+
+# 26. ENROLLMENT PORTAL
+
+Create:
+
+```text
+/enroll
+```
+
+Admin only.
+
+The enrollment workflow is:
+
+```text
+Student Information
+        ↓
+Start Face Capture
+        ↓
+Capture Sample 1 / 5
+        ↓
+Capture Sample 2 / 5
+        ↓
+Capture Sample 3 / 5
+        ↓
+Capture Sample 4 / 5
+        ↓
+Capture Sample 5 / 5
+        ↓
+Submit Samples
+        ↓
+FastAPI generates embeddings
+        ↓
+PostgreSQL / pgvector stores enrollment data
+        ↓
+Enrollment Successful
+```
+
+---
+
+# 27. ENROLLMENT FORM
+
+Fields:
+
+```text
+Student Name
+Roll Number
+Enrollment Number
+Department
+Year
+Section
+Email
+```
+
+Validate required fields.
+
+Use mock data.
+
+After entering information, allow the admin to proceed to face capture.
+
+---
+
+# 28. FACE CAPTURE
+
+Create:
+
+```text
+CaptureProgress.tsx
+```
+
+Display five capture steps:
+
+```text
+● 1
+● 2
+● 3
+○ 4
+○ 5
+```
+
+Example:
+
+```text
+Position your face inside the frame.
+
+Sample 2 of 5
+
+Hold still...
+
+[ Capture ]
+```
+
+After all samples:
+
+```text
+✓ Five samples captured
+
+[ Submit Enrollment ]
+```
+
+The frontend only captures/sends the samples.
+
+The backend performs:
+
+* face detection
+* embedding generation
+* validation
+* database storage
+
+---
+
+# 29. API ABSTRACTION
+
+Create:
+
+```text
+lib/api.ts
+```
 
 Use:
 
-```tsx
-const videoRef = useRef<HTMLVideoElement | null>(null);
-const canvasRef = useRef<HTMLCanvasElement | null>(null);
+```ts
+const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 ```
 
-The webcam component should clean up the MediaStream when unmounted.
-
----
-
-# 24. ML Overlay Function
-
-Provide a clean placeholder:
-
-```tsx
-const drawOverlay = (detections: FaceDetection[]) => {
-    // TODO:
-    // Draw backend-provided face bounding boxes,
-    // names, similarity scores, and landmarks.
-};
-```
-
-Do not perform face detection inside the browser.
-
----
-
-# 25. Mock Data
-
-Include realistic mock data for development.
-
-Mock students:
+Include placeholder methods:
 
 ```text
-Yash Mathur
-Rahul Kumar
-Aditya Sharma
-Priya Singh
-Arjun Patel
+login()
+getCurrentUser()
+
+getAttendanceSession()
+startAttendanceSession()
+stopAttendanceSession()
+confirmAttendance()
+
+getAttendanceHistory()
+getAttendanceSessionDetails()
+
+overrideAttendance()
+getAuditTrail()
+
+exportAttendanceCsv()
+exportAttendanceExcel()
+
+enrollStudent()
+uploadFaceSamples()
 ```
 
-Mock confidence values should look realistic.
-
-Make it extremely obvious in the code which data is mock data.
+Keep all backend communication inside this abstraction rather than scattering fetch calls throughout components.
 
 ---
 
-# 26. Important Architecture Constraint
+# 30. WEBSOCKET HOOK
 
-The frontend must NOT assume that face recognition happens inside Next.js.
+Create:
+
+```text
+lib/useWebSocket.ts
+```
 
 The intended architecture is:
 
 ```text
-Browser
-   │
-   │ Webcam
-   ▼
-Next.js Frontend
-   │
-   │ HTTP / WebSocket
-   ▼
-FastAPI Backend
-   │
-   ├── InsightFace / ArcFace
-   ├── Face Embeddings
-   ├── Recognition
-   └── Attendance Logic
-           │
-           ▼
-        Database
+Browser Camera
+       │
+       │ WebSocket
+       ▼
+FastAPI
+       │
+       ▼
+InsightFace / ArcFace
+       │
+       ▼
+PostgreSQL + pgvector
+       │
+       ▼
+Recognition Result
+       │
+       │ WebSocket
+       ▼
+Frontend
 ```
 
-Next.js is responsible primarily for:
+The hook should expose functionality conceptually similar to:
 
-* UI
-* Routing
-* User interaction
-* Camera interface
-* Displaying recognition results
-* Attendance dashboard
-* Sending/receiving data
+```ts
+connect()
+disconnect()
+sendFrame(frame)
+connectionState
+recognitionResults
+```
 
-FastAPI is responsible for:
+Use mock responses initially.
 
-* Face detection
-* Face recognition
-* Embedding generation
-* Enrollment processing
-* Attendance verification
-* Database operations
+Make the hook easy to connect to the real FastAPI WebSocket endpoint later.
 
 ---
 
-# 27. Code Quality Requirements
+# 31. TYPESCRIPT TYPES
 
-The generated application must:
+Create strongly typed interfaces for:
 
-* Use TypeScript.
-* Use reusable components.
-* Avoid giant `page.tsx` files.
-* Avoid duplicated UI code.
-* Use semantic HTML.
-* Include accessible buttons and inputs.
-* Include loading states.
-* Include error states.
-* Clean up camera streams correctly.
-* Avoid unnecessary dependencies.
-* Keep mock/backend code clearly separated.
-* Use responsive layouts.
-* Work without the backend initially using mock data.
+```text
+User
+Student
+Professor
+Course
+AttendanceSession
+AttendanceRecord
+AttendanceLog
+FaceDetection
+RecognitionResult
+EnrollmentData
+AuditEntry
+WebSocketMessage
+```
 
-Do not create fake backend endpoints.
-
-Do not implement fake face recognition.
-
-Do not pretend that mock recognition is real ML.
+Avoid `any` wherever reasonably possible.
 
 ---
 
-# 28. Final Deliverable
+# 32. MOCK DATA
 
-Generate the complete frontend code required to run the application.
+Create realistic fictional data.
 
-The result should provide:
+Example students:
 
-1. `/` — Live Attendance Dashboard
-2. `/enroll` — Student Enrollment Portal
-3. Reusable webcam component
-4. Camera preview using `getUserMedia`
-5. Canvas overlay
-6. Enrollment workflow simulation
-7. Attendance table
-8. Search/filter functionality
-9. CSV export
-10. Responsive design
-11. Mock data
-12. Clearly documented FastAPI integration points
-13. Clean TypeScript types
-14. Modular component architecture
-
-The application should be immediately runnable with:
-
-```bash
-npm install
-npm run dev
+```text
+Rahul Sharma
+Ananya Rao
+Arjun Mehta
+Priya Nair
+Aditya Kulkarni
+Sneha Patil
 ```
 
-Do not require a backend to see the UI.
+Do not use real personal information.
+
+Generate realistic:
+
+* courses
+* students
+* attendance records
+* confidence scores
+* timestamps
+* manual overrides
+* audit entries
+* history sessions
+
+Include several `needs_review` examples so the review UI can be demonstrated.
+
+---
+
+# 33. RESPONSIVE DESIGN
+
+The system has two different responsive requirements.
+
+## Administrative UI
+
+Dashboard / Review / History:
+
+* Desktop
+* Laptop
+* Tablet
+
+## Capture Mode
+
+Primarily:
+
+* Smartphone
+* Tablet
+
+Capture Mode must be mobile-first.
+
+The UI should adapt to portrait and landscape orientation.
+
+Do not assume a desktop monitor.
+
+---
+
+# 34. DESIGN LANGUAGE
+
+The application should look like professional college administration software.
+
+Use:
+
+* Clean modern interface
+* Strong information hierarchy
+* Rounded cards
+* Subtle borders
+* Restrained shadows
+* Professional typography
+* Accessible contrast
+* Clear status indicators
+* Consistent spacing
+* Responsive layouts
+
+Avoid:
+
+* Excessive gradients
+* Excessive glassmorphism
+* Huge hero sections
+* Marketing landing-page aesthetics
+* Excessive animations
+* Decorative elements that interfere with camera usage
+
+Use Framer Motion only for subtle transitions:
+
+* Status changes
+* Recognition banners
+* Table row insertion
+* Dialogs
+* Capture progress
+* Page transitions
+
+---
+
+# 35. CAPTURE MODE VISUAL PRIORITY
+
+Capture Mode is not a normal dashboard.
+
+Its visual hierarchy should be:
+
+```text
+1. Camera
+2. Recognition result
+3. Attendance status
+4. Backend/camera status
+5. Stop/exit control
+```
+
+Everything else is secondary.
+
+The professor should be able to glance at the phone from several feet away and immediately understand:
+
+```text
+WHO was recognized
+WHAT happened
+WHETHER attendance was recorded
+```
+
+---
+
+# 36. ACCESSIBILITY
+
+Ensure:
+
+* Keyboard navigation where applicable
+* Proper labels
+* Accessible buttons
+* Sufficient contrast
+* ARIA labels for camera controls
+* Clear error messages
+* Visible focus states
+* Do not rely on color alone to communicate status
+
+---
+
+# 37. SECURITY RULES
+
+These rules are mandatory:
+
+1. No face recognition in the browser.
+2. No ML models in the frontend.
+3. No database connections from the frontend.
+4. No database credentials in frontend code.
+5. No API secrets in client-side code.
+6. Use mock authentication for now.
+7. Implement frontend role guards.
+8. Backend must eventually enforce RBAC independently.
+9. Professor accounts cannot access enrollment.
+10. Keep Enrollment and Attendance logically separated.
+11. Preserve the original AI decision when manual overrides occur.
+12. Every manual override must have a reason and audit entry.
+13. Finalized attendance sessions are read-only.
+14. `needs_review` cases must be resolved before final confirmation.
+15. Camera frames are sent to the backend; they are not processed locally.
+
+---
+
+# 38. FINAL USER EXPERIENCE
+
+The finished application should support this complete experience:
+
+### Admin
+
+```text
+Login
+ ↓
+Attendance Dashboard
+ ↓
+Start Capture
+ ↓
+Kiosk Camera Mode
+ ↓
+AI Recognition
+ ↓
+Stop Capture
+ ↓
+Review Attendance
+ ↓
+Resolve Needs Review
+ ↓
+Make Manual Overrides if necessary
+ ↓
+Inspect Audit Trail
+ ↓
+Confirm Attendance
+ ↓
+Export CSV / Excel
+```
+
+Admin can additionally:
+
+```text
+Enrollment
+ ↓
+Enter Student Data
+ ↓
+Capture 5 Samples
+ ↓
+Submit
+ ↓
+Enrollment Complete
+```
+
+### Professor
+
+```text
+Login
+ ↓
+Attendance Dashboard
+ ↓
+Start Capture
+ ↓
+Kiosk Camera Mode
+ ↓
+AI Recognition
+ ↓
+Stop Capture
+ ↓
+Review Attendance
+ ↓
+Resolve Needs Review
+ ↓
+Manual Overrides
+ ↓
+Audit Trail
+ ↓
+Confirm Attendance
+ ↓
+Export
+```
+
+Professor attempting:
+
+```text
+/enroll
+```
+
+must receive:
+
+```text
+403 Access Denied
+```
+
+---
+
+# 39. FINAL DEVELOPMENT REQUIREMENT
+
+Build the application as a complete working Next.js frontend using mock data.
+
+Do not create a generic dashboard template.
+
+Build the UI around the actual workflow of a college AI face-attendance system.
+
+Prioritize:
+
+1. Correct role-based access
+2. Dedicated mobile Capture Mode
+3. Dedicated Review Mode
+4. Reliable camera UX
+5. AI recognition result visualization
+6. `needs_review` workflow
+7. Manual overrides
+8. Audit trail
+9. Attendance confirmation
+10. CSV/Excel export
+11. Attendance history and detail pages
+12. Admin-only enrollment
+13. FastAPI/WebSocket integration hooks
+14. Responsive design
+15. Maintainable TypeScript architecture
+
+The frontend must be immediately runnable as a Next.js application using mock data, while keeping the architecture ready for integration with the real FastAPI + InsightFace/ArcFace + PostgreSQL/pgvector backend later.
