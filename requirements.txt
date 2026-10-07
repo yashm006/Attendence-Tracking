@@ -1,0 +1,39 @@
+# =================================================================
+# WEB FRAMEWORK & API
+# =================================================================
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+websockets>=12.0
+flask>=3.0.0 # Included for legacy prototype compatibility
+
+# =================================================================
+# MACHINE LEARNING & COMPUTER VISION
+# =================================================================
+insightface>=0.7.3
+opencv-python>=4.9.0.80
+numpy>=1.26.0,<2.0.0
+Pillow>=10.2.0
+
+# =================================================================
+# GPU INFERENCE & ACCELERATION
+# =================================================================
+# For GPU Acceleration with CUDA:
+onnxruntime-gpu>=1.17.0
+# Note: If running without CUDA / GPU, replace 'onnxruntime-gpu' with 'onnxruntime'
+
+# =================================================================
+# DATABASE & VECTOR ENGINE
+# =================================================================
+SQLAlchemy>=2.0.28
+psycopg2-binary>=2.9.9
+asyncpg>=0.29.0
+pgvector>=0.2.5
+
+# =================================================================
+# UTILITIES & EXPORTING
+# =================================================================
+pandas>=2.2.0
+openpyxl>=3.1.2
+python-dotenv>=1.0.1

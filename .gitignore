@@ -1,8 +1,12 @@
+attendence.csv
+prototype/
+
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.ipynb
 
 # Virtual environment
 .venv/
