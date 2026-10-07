@@ -1,88 +1,36 @@
-# AI-Powered Automated Attendance System
-
-An enterprise-grade, real-time facial recognition attendance system powered by **InsightFace**, **FastAPI**, **Next.js**, and **PostgreSQL (pgvector)**.
-
----
-
-## Key Features
-
-- **Real-Time Identification:** Sub-50ms inference utilizing CUDA-accelerated InsightFace models.
-- **Asynchronous Processing:** Multi-threaded frame processing and dynamic WebSocket video streaming.
-- **Vector Search Engine:** High-performance cosine similarity matching natively inside PostgreSQL using `pgvector`.
-- **Enrollment Portal:** Integrated web portal for single and batch student registration.
-- **Live Attendance Dashboard:** Real-time log updating with anti-duplication cooldown filters.
-- **Analytics & Exporting:** Export attendance data in CSV and Excel formats.
-
----
-
-## Architecture Overview
-
-```
-+------------------+         WebSockets         +-------------------+
-| Next.js Frontend | <------------------------> | FastAPI ML Service|
-+------------------+                            +-------------------+
-|                                                |
-| REST API                                       | Vector Queries
-v                                                v
-+-------------------------------------------------------------------+
-|                  PostgreSQL Database + pgvector                   |
-+-------------------------------------------------------------------+
-```
-
----
-
-## Tech Stack
-
-- **Frontend:** Next.js 14, React, Tailwind CSS
-- **Backend API:** FastAPI (Python 3.10+) / Node.js
-- **Machine Learning:** InsightFace (`buffalo_s`), OpenCV, ONNX Runtime GPU (CUDA 12.x)
-- **Database:** PostgreSQL 16 with `pgvector`
-- **Streaming:** WebSockets / WebRTC
-
----
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
-### Prerequisites
+First, run the development server:
 
-- NVIDIA GPU with CUDA 11.8+ / 12.x and cuDNN installed.
-- Docker & Docker Compose.
-- Python 3.10+
-- Node.js 18+
-
----
-
-### Installation & Local Setup
-
-#### 1. Clone the Repository
 ```bash
-git clone [https://github.com/your-org/attendance-system.git](https://github.com/your-org/attendance-system.git)
-cd attendance-system
-```
-
-
-#### 2. Start Database
-```Bash
-docker-compose up -d postgres
-```
-
-#### 3. Setup ML Engine & Backend
-```Bash
-# Create Python virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run ML API service
-uvicorn ml_service.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-#### 4. Setup Frontend
-```Bash
-cd frontend
-npm install
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
-Open http://localhost:3000 in your browser.
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
