@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { exportAttendanceToCSV } from "../../lib/exportCsv";
 import { AttendanceRecord, Course, AttendanceStatus } from "../../types";
 import { fetchCourses, fetchAttendanceRecords, updateAttendanceStatus } from "../../lib/api";
 import AttendanceTable from "../../components/AttendanceTable";
+import WebcamScanner from "../../components/WebcamScanner";
 
 export default function AttendancePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [showScanner, setShowScanner] = useState<boolean>(false);
+  const [scannerNotification, setScannerNotification] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -54,6 +58,18 @@ export default function AttendancePage() {
     }
   };
 
+  const handleFaceDetected = async (studentName: string) => {
+    const matchingRecord = records.find(
+      (r) => r.studentName.toLowerCase() === studentName.toLowerCase()
+    );
+
+    if (matchingRecord && matchingRecord.status !== "Present") {
+      await handleStatusChange(matchingRecord.id, "Present");
+      setScannerNotification(`Auto-logged: Marked ${studentName} as Present!`);
+      setTimeout(() => setScannerNotification(null), 4000);
+    }
+  };
+
   const presentCount = records.filter((r) => r.status === "Present").length;
   const absentCount = records.filter((r) => r.status === "Absent").length;
   const lateCount = records.filter((r) => r.status === "Late").length;
@@ -68,25 +84,57 @@ export default function AttendancePage() {
           </p>
         </div>
 
-        {/* Course Filter Dropdown */}
-        <div className="flex items-center space-x-2">
-          <label htmlFor="course-select" className="text-sm font-medium text-muted-foreground">
-            Course:
-          </label>
-          <select
-            id="course-select"
-            value={selectedCourse}
-            onChange={(e) => handleCourseChange(e.target.value)}
-            className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        <div className="flex items-center space-x-3">
+          {/* Export CSV Button */}
+          <button
+            onClick={() => exportAttendanceToCSV(records, selectedCourse)}
+            className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
           >
-            {courses.map((course) => (
-              <option key={course.id} value={course.code}>
-                {course.code} - {course.name}
-              </option>
-            ))}
-          </select>
+            Export CSV
+          </button>
+
+          {/* Camera Toggle Button */}
+          <button
+            onClick={() => setShowScanner(!showScanner)}
+            className="rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow transition-opacity hover:opacity-90"
+          >
+            {showScanner ? "Hide Scanner" : "Launch Camera Scanner"}
+          </button>
+
+          {/* Course Filter Dropdown */}
+          <div className="flex items-center space-x-2">
+            <label htmlFor="course-select" className="text-sm font-medium text-muted-foreground">
+              Course:
+            </label>
+            <select
+              id="course-select"
+              value={selectedCourse}
+              onChange={(e) => handleCourseChange(e.target.value)}
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {courses.map((course) => (
+                <option key={course.id} value={course.code}>
+                  {course.code} - {course.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
+
+      {/* Auto-Detection Notification Banner */}
+      {scannerNotification && (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-500">
+          {scannerNotification}
+        </div>
+      )}
+
+      {/* Embedded Camera Scanner Section */}
+      {showScanner && (
+        <div className="my-6">
+          <WebcamScanner onFaceDetected={handleFaceDetected} />
+        </div>
+      )}
 
       {/* Quick Metrics Bar */}
       <div className="grid gap-4 sm:grid-cols-4">
