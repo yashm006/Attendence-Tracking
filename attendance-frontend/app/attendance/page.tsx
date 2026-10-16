@@ -1,169 +1,87 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { exportAttendanceToCSV } from "../../lib/exportCsv";
-import { AttendanceRecord, Course, AttendanceStatus } from "../../types";
-import { fetchCourses, fetchAttendanceRecords, updateAttendanceStatus } from "../../lib/api";
-import AttendanceTable from "../../components/AttendanceTable";
-import WebcamScanner from "../../components/WebcamScanner";
+import { useEffect, useState } from "react";
+import { fetchAttendanceLogs, AttendanceRecord } from "@/lib/api";
 
 export default function AttendancePage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<string>("");
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [logs, setLogs] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [showScanner, setShowScanner] = useState<boolean>(false);
-  const [scannerNotification, setScannerNotification] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const courseList = await fetchCourses();
-        setCourses(courseList);
-        const initialCourse = courseList[0]?.code || "";
-        setSelectedCourse(initialCourse);
-
-        const attendanceList = await fetchAttendanceRecords(initialCourse);
-        setRecords(attendanceList);
-      } catch (error) {
-        console.error("Failed to load attendance data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  const handleCourseChange = async (courseCode: string) => {
-    setSelectedCourse(courseCode);
+  const loadLogs = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const updatedRecords = await fetchAttendanceRecords(courseCode);
-      setRecords(updatedRecords);
-    } catch (error) {
-      console.error("Failed to filter records:", error);
+      const data = await fetchAttendanceLogs();
+      setLogs(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load attendance logs.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusChange = async (id: string, newStatus: AttendanceStatus) => {
-    try {
-      const updated = await updateAttendanceStatus(id, newStatus);
-      setRecords((prev) =>
-        prev.map((rec) => (rec.id === id ? updated : rec))
-      );
-    } catch (error) {
-      console.error("Failed to update status:", error);
-    }
-  };
-
-  const handleFaceDetected = async (studentName: string) => {
-    const matchingRecord = records.find(
-      (r) => r.studentName.toLowerCase() === studentName.toLowerCase()
-    );
-
-    if (matchingRecord && matchingRecord.status !== "Present") {
-      await handleStatusChange(matchingRecord.id, "Present");
-      setScannerNotification(`Auto-logged: Marked ${studentName} as Present!`);
-      setTimeout(() => setScannerNotification(null), 4000);
-    }
-  };
-
-  const presentCount = records.filter((r) => r.status === "Present").length;
-  const absentCount = records.filter((r) => r.status === "Absent").length;
-  const lateCount = records.filter((r) => r.status === "Late").length;
+  useEffect(() => {
+    loadLogs();
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Attendance Tracking</h1>
-          <p className="text-muted-foreground">
-            View and manage real-time class attendance logs.
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          {/* Export CSV Button */}
-          <button
-            onClick={() => exportAttendanceToCSV(records, selectedCourse)}
-            className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-          >
-            Export CSV
-          </button>
-
-          {/* Camera Toggle Button */}
-          <button
-            onClick={() => setShowScanner(!showScanner)}
-            className="rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow transition-opacity hover:opacity-90"
-          >
-            {showScanner ? "Hide Scanner" : "Launch Camera Scanner"}
-          </button>
-
-          {/* Course Filter Dropdown */}
-          <div className="flex items-center space-x-2">
-            <label htmlFor="course-select" className="text-sm font-medium text-muted-foreground">
-              Course:
-            </label>
-            <select
-              id="course-select"
-              value={selectedCourse}
-              onChange={(e) => handleCourseChange(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {courses.map((course) => (
-                <option key={course.id} value={course.code}>
-                  {course.code} - {course.name}
-                </option>
-              ))}
-            </select>
+    <div className="min-h-screen bg-slate-950 text-white p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-blue-400">Live Attendance Logs</h1>
+            <p className="text-sm text-slate-400">Real-time attendance records captured by the facial recognition engine.</p>
           </div>
+          <button
+            onClick={loadLogs}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm font-medium transition"
+          >
+            🔄 Refresh
+          </button>
+        </div>
+
+        {error && <div className="p-4 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-sm">{error}</div>}
+
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          {loading ? (
+            <div className="p-8 text-center text-slate-400">Loading records from server...</div>
+          ) : logs.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">No attendance logs recorded yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-800/60 text-slate-400 uppercase text-xs font-semibold">
+                  <tr>
+                    <th className="py-3 px-4">Student ID</th>
+                    <th className="py-3 px-4">Student Name</th>
+                    <th className="py-3 px-4">Course</th>
+                    <th className="py-3 px-4">Confidence</th>
+                    <th className="py-3 px-4">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-800/40 transition">
+                      <td className="py-3 px-4 font-mono text-blue-300">{log.student_id}</td>
+                      <td className="py-3 px-4 font-medium text-white">{log.student_name}</td>
+                      <td className="py-3 px-4 font-semibold text-amber-400">{log.course_code}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-1 bg-green-950 text-green-300 border border-green-800 rounded text-xs font-mono">
+                          {(log.confidence * 100).toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-400">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Auto-Detection Notification Banner */}
-      {scannerNotification && (
-        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-500">
-          {scannerNotification}
-        </div>
-      )}
-
-      {/* Embedded Camera Scanner Section */}
-      {showScanner && (
-        <div className="my-6">
-          <WebcamScanner onFaceDetected={handleFaceDetected} />
-        </div>
-      )}
-
-      {/* Quick Metrics Bar */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground">Total Enrolled</span>
-          <p className="mt-1 text-2xl font-bold">{records.length}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground">Present</span>
-          <p className="mt-1 text-2xl font-bold text-emerald-500">{presentCount}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground">Absent</span>
-          <p className="mt-1 text-2xl font-bold text-rose-500">{absentCount}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground">Late</span>
-          <p className="mt-1 text-2xl font-bold text-amber-500">{lateCount}</p>
-        </div>
-      </div>
-
-      {/* Attendance Table */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <span className="text-sm text-muted-foreground">Loading attendance data...</span>
-        </div>
-      ) : (
-        <AttendanceTable records={records} onStatusChange={handleStatusChange} />
-      )}
     </div>
   );
 }

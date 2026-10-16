@@ -7,51 +7,42 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: "Overview", path: "/" },
-    { name: "Attendance", path: "/attendance" },
-    { name: "Enrollment", path: "/enroll" },
-    { name: "Login", path: "/login" },
+    { name: "Overview", href: "/" },
+    { name: "Live Scanner", href: "/scan" },
+    { name: "Attendance Logs", href: "/attendance" },
+    { name: "Enrollment", href: "/enroll" },
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-base font-bold tracking-tight">
-            <span className="rounded-lg bg-primary px-2.5 py-1 text-xs text-primary-foreground font-mono">
-              AI
-            </span>
-            <span>Attendance Portal</span>
-          </Link>
+    <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-3">
+          <span className="px-2.5 py-1 bg-blue-600 rounded-lg text-xs font-bold text-white">AI</span>
+          <span className="text-lg font-bold text-white">Attendance Portal</span>
+        </Link>
 
-          <nav className="hidden md:flex gap-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-muted text-foreground font-semibold"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        <nav className="flex items-center gap-1 sm:gap-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  isActive
+                    ? "bg-slate-800 text-white font-semibold"
+                    : "text-slate-400 hover:text-white hover:bg-slate-900"
+                }`}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
+        </nav>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
-          >
-            Sign In
-          </Link>
-        </div>
+        <button className="px-3.5 py-1.5 bg-slate-100 text-slate-900 hover:bg-white text-xs font-semibold rounded-lg transition">
+          Sign In
+        </button>
       </div>
     </header>
   );
